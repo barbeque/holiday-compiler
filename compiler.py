@@ -28,7 +28,9 @@ def interpret_relative_date(relative):
             if remaining_reps < 0:
                 # found the target
                 return datetime.date(year, month_number, day)
-        day = day + 1
+            day = day + 7 # skip a week to cut on the reps...
+        else:
+            day = day + 1
 
 def month_name_to_number(month_name):
     mapping = {

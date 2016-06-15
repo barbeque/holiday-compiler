@@ -1,4 +1,5 @@
 import compiler
 
 d = compiler.interpret_relative_date('second friday in april')
-print d
+assert d.month == 4
+assert d.day == 8
