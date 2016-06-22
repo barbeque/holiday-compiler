@@ -25,8 +25,7 @@ def compile(source_path, year = datetime.datetime.now().year):
                 continue
 
             # does it look like an absolute date?
-            tokens = line.split()
-            if is_valid_month(tokens[0]):
+            if looks_like_absolute_date(line):
                 output.append(interpret_absolute_date(line, year))
                 continue
             
@@ -46,10 +45,21 @@ def clean_line(raw_line):
     """
     return raw_line.partition("//")[0].strip()
 
+def looks_like_absolute_date(line):
+    if line.lower() == "easter":
+        return True
+    tokens = line.split()
+    if is_valid_month(tokens[0].strip()):
+        return True
+    return False
+
 def interpret_absolute_date(datestring, year):
     """
     Converts an absolute date like 'december 11' into a datetime.
     """
+    if datestring.lower() == "easter":
+        return get_easter_for(year)
+
     tokens = datestring.split()
     return datetime.date(year, month_name_to_number(tokens[0]),
                          int(tokens[1]))
@@ -123,6 +133,9 @@ def day_of_week_at(day, month, year):
     Determines what weekday a given date falls on.
     """
     return datetime.date(year,month,day).strftime("%A").lower()
+
+def get_easter_for(year):
+    raise ValueError("TODO: Calculate Easter")
     
 # convert 'first', 'second', 'third' to numbers?
 def convert_nth_to_number(nth_token):
