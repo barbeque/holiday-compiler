@@ -1,8 +1,63 @@
 import calendar, datetime
 
-# interprets a relative date, like "second monday of april"
+def compile(source_path, year = datetime.datetime.now().year):
+    output = []
 
-def interpret_relative_date(relative):
+    with open(source_path.strip(), 'r') as fp:
+        for raw_line in fp.readlines():
+            # clean up the input line
+            line = clean_line(raw_line)
+            if len(line) < 1:
+                continue
+            print line
+
+            # does it look like an import statement?
+            if line.startswith("#"):
+                # parse the next few lines...
+                if line.startswith("#include"):
+                    tokens = line.split()
+                    # TODO: error checking...
+                    to_import = tokens[1]
+                    imported_items = compile(to_import, year)
+                    output.extend(imported_items)
+                else:
+                    raise ValueError("I have no idea what this compiler directive is", line)
+                continue
+
+            # does it look like an absolute date?
+            tokens = line.split()
+            if is_valid_month(tokens[0]):
+                output.append(interpret_absolute_date(line, year))
+                continue
+            
+            # does it look like a relative date?
+            try:
+                rel_date = interpret_relative_date(line, year)
+                output.append(rel_date)
+            except ValueError:
+                print "Could not parse line", raw_line
+
+    return output
+
+def clean_line(raw_line):
+    """
+    Strips comments and generally cleans up a line, preparing it for
+    tokenization.
+    """
+    return raw_line.partition("//")[0].strip()
+
+def interpret_absolute_date(datestring, year):
+    """
+    Converts an absolute date like 'december 11' into a datetime.
+    """
+    tokens = datestring.split()
+    return datetime.date(year, month_name_to_number(tokens[0]),
+                         int(tokens[1]))
+
+def interpret_relative_date(relative, year):
+    """
+    Interprets a relative date, such as "second monday of april"
+    """
     tokens = relative.split()
     
     if len(tokens) != 4:
@@ -17,7 +72,6 @@ def interpret_relative_date(relative):
 
     # start counting throughout the month
     remaining_reps = which_occurrence
-    year = 2016 # todo
     month_number = month_name_to_number(which_month)
     day = 1
     while remaining_reps >= 0:
@@ -33,6 +87,10 @@ def interpret_relative_date(relative):
             day = day + 1
 
 def month_name_to_number(month_name):
+    """
+    Converts a human readable month name into a 1-indexed
+    integer of what month number it is for.
+    """
     mapping = {
         'january': 1,
         'february': 2,
@@ -46,16 +104,25 @@ def month_name_to_number(month_name):
         'october': 10,
         'november': 11,
         'december': 12
-    }
+    } # todo: shortmonths
 
-    if month_name.lower() in mapping:
-        return mapping[month_name.lower()]
+    if month_name.strip().lower() in mapping:
+        return mapping[month_name.strip().lower()]
     else:
-        raise ValueError("Invalid month: '{0}'" % (month_name))
+        raise ValueError("Invalid month: '{}'".format(month_name))
+
+def is_valid_month(maybe_month):
+    try:
+        month_name_to_number(maybe_month)
+        return True
+    except ValueError:
+        return False
 
 def day_of_week_at(day, month, year):
-    weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-    return weekdays[datetime.date(year, month, day).weekday()]
+    """
+    Determines what weekday a given date falls on.
+    """
+    return datetime.date(year,month,day).strftime("%A").lower()
     
 # convert 'first', 'second', 'third' to numbers?
 def convert_nth_to_number(nth_token):
@@ -63,4 +130,4 @@ def convert_nth_to_number(nth_token):
     if nth_token.lower() in nth_dict:
         return nth_dict[nth_token.lower()]
     else:
-        raise ValueError("The token '{0}' is not understood as an ordinal here.").format(nth_token)
+        raise ValueError("The token '{}' is not understood as an ordinal here.".format(nth_token))
