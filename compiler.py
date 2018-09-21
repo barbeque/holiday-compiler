@@ -1,4 +1,5 @@
 import calendar, datetime
+from datetime import timedelta
 
 def compile(source_path, year = datetime.datetime.now().year):
     output = []
@@ -28,10 +29,15 @@ def compile(source_path, year = datetime.datetime.now().year):
             if looks_like_absolute_date(line):
                 output.append(interpret_absolute_date(line, year))
                 continue
+
+            # does it look like a 'relative' date?
+            if looks_like_relative_date(line):
+                output.append(interpret_relative_date(line, year))
+                continue
             
-            # does it look like a relative date?
+            # does it look like a occurrence date?
             try:
-                rel_date = interpret_relative_date(line, year)
+                rel_date = interpret_occurrence_date(line, year)
                 output.append(rel_date)
             except ValueError:
                 print "Could not parse line", raw_line
@@ -53,6 +59,11 @@ def looks_like_absolute_date(line):
         return True
     return False
 
+def looks_like_relative_date(line):
+    if 'before' in line.lower():
+        return True
+    return False
+
 def interpret_absolute_date(datestring, year):
     """
     Converts an absolute date like 'december 11' into a datetime.
@@ -66,12 +77,39 @@ def interpret_absolute_date(datestring, year):
 
 def interpret_relative_date(relative, year):
     """
-    Interprets a relative date, such as "second monday of april"
+    Interprets a relative date, such as "friday before may 25" or "friday before easter"
     """
     tokens = relative.split()
+    which_day_of_week = tokens[0].lower()
+
+    # expect this to be 'before' or 'after'
+    if tokens[1].lower() == 'before':
+        daystep = -1
+    elif tokens[1].lower() == 'after':
+        daystep = 1
+    else:
+        raise ValueError("Unknown relative positioning: " + tokens[1])
+
+    relative_to = interpret_absolute_date(' '.join(tokens[2:]), year)
+    
+    test_day = relative_to
+    while True:
+        # keep stepping backward/forward through the year until we find a weekday
+        # that matches
+        test_day += timedelta(days=daystep)
+        this_weekday = day_of_week_at(test_day.day, test_day.month, test_day.year)
+        if this_weekday == which_day_of_week:
+            # found the target weekday
+            return test_day
+
+def interpret_occurrence_date(occurrence, year):
+    """
+    Interprets a occurrence date, such as "second monday of april"
+    """
+    tokens = occurrence.split()
     
     if len(tokens) != 4:
-        raise ValueError("Wrong number of tokens to be a relative date")
+        raise ValueError("Wrong number of tokens to be an occurrence date")
 
     which_occurrence = convert_nth_to_number(tokens[0])
     which_day_of_week = tokens[1].lower()
